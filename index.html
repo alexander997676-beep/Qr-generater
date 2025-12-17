@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vision 2028 - Cyber Edition</title>
+    <title>QR Generator - Cyber Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -35,6 +35,395 @@
         /* Glass Cards */
         .glass-card {
             background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Floating Dock (Mobile) */
+        .floating-dock {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 10px 20px;
+            display: flex; gap: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            z-index: 50;
+        }
+        .dock-item {
+            color: #64748b; font-size: 1.2rem; transition: 0.3s;
+            position: relative; padding: 5px; cursor: pointer;
+        }
+        .dock-item.active { color: #22d3ee; transform: scale(1.1); }
+        .dock-item.active::after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px; background: #22d3ee; border-radius: 50%; box-shadow: 0 0 10px #22d3ee;
+        }
+
+        /* Sidebar Button */
+        .side-btn.active {
+            background: linear-gradient(90deg, rgba(34, 211, 238, 0.1) 0%, transparent 100%);
+            border-left: 3px solid #22d3ee;
+            color: #22d3ee;
+        }
+
+        /* Loader Animation */
+        .scanner-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: #22d3ee;
+            box-shadow: 0 0 10px #22d3ee;
+            animation: scan 2s infinite linear;
+        }
+        @keyframes scan { 0% {top: 0;} 50% {top: 100%;} 100% {top: 0;} }
+        
+        /* Custom Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="hidden md:flex w-72 border-r border-slate-800 flex-col z-20 bg-[#0f172a]">
+        <div class="p-8">
+            <!-- UPDATED TITLE -->
+            <h1 class="text-3xl font-bold text-white tracking-tighter">
+                QR <span class="text-cyan-400">GENERATOR</span>
+            </h1>
+            <p class="text-xs text-slate-500 mt-1 uppercase tracking-widest">Enhanced Edition</p>
+        </div>
+        
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <button onclick="setMode('link')" id="d-link" class="side-btn active w-full text-left px-5 py-4 rounded-r-xl transition flex items-center gap-4 font-medium text-slate-400 hover:text-white">
+                <i class="fa-solid fa-link"></i> Website Link
+            </button>
+            <button onclick="setMode('wifi')" id="d-wifi" class="side-btn w-full text-left px-5 py-4 rounded-r-xl transition flex items-center gap-4 font-medium text-slate-400 hover:text-white">
+                <i class="fa-solid fa-wifi"></i> Wi-Fi Access
+            </button>
+            <button onclick="setMode('vcard')" id="d-vcard" class="side-btn w-full text-left px-5 py-4 rounded-r-xl transition flex items-center gap-4 font-medium text-slate-400 hover:text-white">
+                <i class="fa-solid fa-id-badge"></i> Smart Contact
+            </button>
+            <button onclick="setMode('whatsapp')" id="d-whatsapp" class="side-btn w-full text-left px-5 py-4 rounded-r-xl transition flex items-center gap-4 font-medium text-slate-400 hover:text-white">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+            </button>
+            <button onclick="setMode('photo')" id="d-photo" class="side-btn w-full text-left px-5 py-4 rounded-r-xl transition flex items-center gap-4 font-medium text-slate-400 hover:text-white">
+                <i class="fa-solid fa-image"></i> Hologram Photo
+            </button>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto relative no-scrollbar">
+        <div class="max-w-6xl mx-auto p-6 md:p-12 pb-32">
+            
+            <!-- Mobile Header (UPDATED) -->
+            <div class="md:hidden text-center mb-8">
+                <h1 class="text-2xl font-bold text-white">QR <span class="text-cyan-400">GENERATOR</span></h1>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-10">
+                
+                <!-- LEFT: INPUTS -->
+                <div class="flex-1 space-y-8">
+                    
+                    <div>
+                        <h2 class="text-3xl font-bold text-white mb-2" id="header-title">Destination Link</h2>
+                        <div class="h-1 w-20 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full"></div>
+                    </div>
+
+                    <!-- FORMS -->
+                    <div class="glass-card p-6 rounded-2xl shadow-2xl shadow-cyan-900/10">
+                        
+                        <!-- Link -->
+                        <div id="form-link" class="input-group">
+                            <label class="block text-xs font-bold text-cyan-400 uppercase mb-2">URL / Link</label>
+                            <input type="text" id="inp-url" class="neon-input w-full p-4 rounded-xl" placeholder="https://example.com" oninput="debounceGen()">
+                        </div>
+
+                        <!-- Wi-Fi -->
+                        <div id="form-wifi" class="input-group hidden space-y-4">
+                            <input type="text" id="wf-ssid" class="neon-input w-full p-4 rounded-xl" placeholder="Network Name (SSID)" oninput="debounceGen()">
+                            <input type="text" id="wf-pass" class="neon-input w-full p-4 rounded-xl" placeholder="Password" oninput="debounceGen()">
+                            <select id="wf-enc" class="neon-input w-full p-4 rounded-xl" onchange="debounceGen()">
+                                <option value="WPA">WPA/WPA2 (Secure)</option>
+                                <option value="nopass">Open Network</option>
+                            </select>
+                        </div>
+
+                        <!-- VCard -->
+                        <div id="form-vcard" class="input-group hidden space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input type="text" id="vc-fn" class="neon-input w-full p-4 rounded-xl" placeholder="First Name" oninput="debounceGen()">
+                                <input type="text" id="vc-ln" class="neon-input w-full p-4 rounded-xl" placeholder="Last Name" oninput="debounceGen()">
+                            </div>
+                            <input type="text" id="vc-ph" class="neon-input w-full p-4 rounded-xl" placeholder="Phone Number" oninput="debounceGen()">
+                        </div>
+
+                        <!-- WhatsApp -->
+                        <div id="form-whatsapp" class="input-group hidden space-y-4">
+                            <input type="text" id="wa-num" class="neon-input w-full p-4 rounded-xl" placeholder="Phone with Country Code (e.g. 923...)" oninput="debounceGen()">
+                            <input type="text" id="wa-msg" class="neon-input w-full p-4 rounded-xl" placeholder="Start Message" oninput="debounceGen()">
+                        </div>
+
+                        <!-- Photo -->
+                        <div id="form-photo" class="input-group hidden">
+                            <label class="block text-xs font-bold text-cyan-400 uppercase mb-2">Image Link</label>
+                            <input type="text" id="img-url-input" class="neon-input w-full p-4 rounded-xl" placeholder="Paste Direct Image URL (https://...)" oninput="debounceGen()">
+                            <p class="text-xs text-slate-500 mt-2 italic">* Provide a direct link to an image hosted online.</p>
+                        </div>
+
+                    </div>
+
+                    <!-- CUSTOMIZATION -->
+                    <div class="glass-card p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-white">Appearance</h3>
+                            <span class="text-xs bg-cyan-900 text-cyan-300 px-2 py-1 rounded">PRO</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-slate-500 uppercase">QR Color</label>
+                                <input type="color" id="col-qr" value="#00e5ff" class="w-full h-10 rounded-lg border-0 bg-slate-800 p-1 mt-1 cursor-pointer" oninput="debounceGen()">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 uppercase">Background</label>
+                                <input type="color" id="col-bg" value="#0f172a" class="w-full h-10 rounded-lg border-0 bg-slate-800 p-1 mt-1 cursor-pointer" oninput="debounceGen()">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                             <label class="text-xs text-slate-500 uppercase">Style</label>
+                             <select id="qr-style" class="neon-input w-full p-2 rounded-lg mt-1 text-sm" onchange="debounceGen()">
+                                 <option value="square">Cyber Square</option>
+                                 <option value="circle">Neon Dots</option>
+                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: PREVIEW -->
+                <div class="w-full lg:w-[400px]">
+                    <div class="sticky top-6">
+                        <div class="glass-card p-8 rounded-[2rem] text-center relative overflow-hidden border-t border-cyan-500/30">
+                            
+                            <h3 class="text-xs font-bold text-cyan-500 uppercase tracking-[0.2em] mb-8">Holographic Preview</h3>
+                            
+                            <div class="relative inline-block p-4 bg-white/5 rounded-2xl border border-white/10 shadow-2xl shadow-cyan-500/20">
+                                <img id="qr-preview" src="" class="w-56 h-56 object-contain rounded-xl" alt="QR Code">
+                                <!-- Scanner Effect -->
+                                <div id="loader" class="absolute inset-0 hidden">
+                                    <div class="scanner-line"></div>
+                                    <div class="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
+                                        <span class="text-cyan-400 text-xs animate-pulse">GENERATING...</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-8 grid grid-cols-2 gap-4">
+                                <button onclick="downloadQR()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-[0_0_20px_rgba(8,145,178,0.4)]">
+                                    <i class="fa-solid fa-download mr-2"></i> Save
+                                </button>
+                                <button onclick="shareQR()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">
+                                    <i class="fa-solid fa-share-nodes mr-2"></i> Share
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- HISTORY WIDGET -->
+                        <div class="mt-6 glass-card p-5 rounded-2xl">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-bold text-slate-400 uppercase">Recent History</h4>
+                                <button onclick="clearHistory()" class="text-xs text-red-400 hover:text-red-300">Clear</button>
+                            </div>
+                            <div id="history-list" class="space-y-2 text-sm text-slate-500 max-h-32 overflow-y-auto no-scrollbar">
+                                <p class="text-xs italic" id="empty-history">No recent scans.</p>
+                            </div>
+                        </div>
+
+                        <!-- UPDATED FOOTER -->
+                        <div class="mt-8 text-center opacity-60">
+                            <p class="text-xs text-slate-500 font-medium">
+                                &copy; 2025 Faizan Ahmad All Rights Reserved.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- FLOATING DOCK (MOBILE) -->
+    <div class="floating-dock md:hidden">
+        <div onclick="setMode('link')" class="dock-item active" id="m-link"><i class="fa-solid fa-link"></i></div>
+        <div onclick="setMode('wifi')" class="dock-item" id="m-wifi"><i class="fa-solid fa-wifi"></i></div>
+        <div onclick="setMode('vcard')" class="dock-item" id="m-vcard"><i class="fa-solid fa-id-badge"></i></div>
+        <div onclick="setMode('whatsapp')" class="dock-item" id="m-whatsapp"><i class="fa-brands fa-whatsapp"></i></div>
+        <div onclick="setMode('photo')" class="dock-item" id="m-photo"><i class="fa-solid fa-image"></i></div>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        let mode = 'link';
+        let timer;
+        
+        let scanHistory = JSON.parse(localStorage.getItem('qr_history_28')) || [];
+        renderHistory();
+
+        function setMode(m) {
+            mode = m;
+            document.querySelectorAll('.input-group').forEach(e => e.classList.add('hidden'));
+            document.getElementById('form-' + mode).classList.remove('hidden');
+
+            document.querySelectorAll('.dock-item').forEach(e => e.classList.remove('active'));
+            const mBtn = document.getElementById('m-' + mode);
+            if(mBtn) mBtn.classList.add('active');
+
+            document.querySelectorAll('.side-btn').forEach(e => e.classList.remove('active', 'text-white'));
+            const dBtn = document.getElementById('d-' + mode);
+            if(dBtn) dBtn.classList.add('active', 'text-white');
+
+            const titles = {
+                link:'Destination Link', 
+                wifi:'Secure Wi-Fi', 
+                vcard:'Digital Identity', 
+                whatsapp:'Chat Link', 
+                photo:'Visual Hologram'
+            };
+            document.getElementById('header-title').innerText = titles[mode];
+            debounceGen();
+        }
+
+        function getData() {
+            if(mode === 'link') return document.getElementById('inp-url').value || 'https://google.com';
+            
+            if(mode === 'wifi') {
+                const ssid = document.getElementById('wf-ssid').value || 'MyNetwork';
+                const pass = document.getElementById('wf-pass').value || '';
+                const type = document.getElementById('wf-enc').value;
+                return `WIFI:S:${ssid};P:${pass};T:${type};;`;
+            }
+            
+            if(mode === 'vcard') {
+                const fn = document.getElementById('vc-fn').value || 'John';
+                const ln = document.getElementById('vc-ln').value || 'Doe';
+                const ph = document.getElementById('vc-ph').value || '';
+                return `BEGIN:VCARD\nVERSION:3.0\nFN:${fn} ${ln}\nTEL:${ph}\nEND:VCARD`;
+            }
+            
+            if(mode === 'whatsapp') {
+                const num = document.getElementById('wa-num').value || '';
+                const msg = document.getElementById('wa-msg').value || '';
+                return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+            }
+            
+            if(mode === 'photo') {
+                return document.getElementById('img-url-input').value || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe';
+            }
+        }
+
+        function gen() {
+            const data = getData();
+            const qrColor = document.getElementById('col-qr').value.replace('#','');
+            const bgColor = document.getElementById('col-bg').value.replace('#','');
+            const style = document.getElementById('qr-style').value;
+
+            let url = `https://quickchart.io/qr?text=${encodeURIComponent(data)}&size=500&ecLevel=H&margin=1&dark=${qrColor}&light=${bgColor}`;
+            if(style === 'circle') url += '&format=png&rounded=100';
+
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+
+            const img = new Image();
+            img.src = url;
+            img.onload = () => { 
+                document.getElementById('qr-preview').src = url; 
+                loader.classList.add('hidden'); 
+                addToHistory(mode);
+            };
+            img.onerror = () => {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function addToHistory(type) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const lastEntry = scanHistory[0];
+            
+            if(!lastEntry || lastEntry.type !== type) {
+                scanHistory.unshift({ type: type, time: time });
+                if(scanHistory.length > 5) scanHistory.pop();
+                localStorage.setItem('qr_history_28', JSON.stringify(scanHistory));
+                renderHistory();
+            }
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            const emptyMsg = document.getElementById('empty-history');
+            
+            if(scanHistory.length === 0) {
+                list.innerHTML = '';
+                list.appendChild(emptyMsg);
+                emptyMsg.style.display = 'block';
+                return;
+            }
+            
+            emptyMsg.style.display = 'none';
+            list.innerHTML = scanHistory.map(item => 
+                `<div class="flex justify-between items-center bg-white/5 p-2 rounded hover:bg-white/10 transition mb-2">
+                    <span class="capitalize text-cyan-400 font-medium">${item.type}</span> 
+                    <span class="text-xs opacity-70">${item.time}</span>
+                </div>`
+            ).join('');
+        }
+
+        function clearHistory() {
+            scanHistory = [];
+            localStorage.removeItem('qr_history_28');
+            renderHistory();
+        }
+
+        function debounceGen() { clearTimeout(timer); timer = setTimeout(gen, 500); }
+
+        function downloadQR() {
+            fetch(document.getElementById('qr-preview').src)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'qr-generator.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                });
+        }
+        
+        async function shareQR() {
+            if(navigator.share) {
+                try {
+                    const res = await fetch(document.getElementById('qr-preview').src);
+                    const blob = await res.blob();
+                    const file = new File([blob], 'qr.png', { type: 'image/png' });
+                    await navigator.share({
+                        title: 'QR Generator',
+                        text: 'Created with Faizan Ahmad QR Generator',
+                        files: [file]
+                    });
+                } catch (err) {
+                    console.log('Error sharing', err);
+                }
+            } else { 
+                alert('Sharing not supported on this device/browser.'); 
+            }
+        }
+
+        gen(); 
+    </script>
+</body>
+</html>            background: rgba(30, 41, 59, 0.4);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
